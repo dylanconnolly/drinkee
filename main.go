@@ -13,6 +13,8 @@ func main() {
 	err := postgres.CreatePostgresConnection()
 	if err != nil {
 		log.Fatal(err)
+		fmt.Println("error connecting to postgres")
+		return
 	}
 	fmt.Println("connection to postgres successful!")
 	r := router.CreateRouter()
