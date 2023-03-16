@@ -4,26 +4,26 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 )
 
-type album struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Artist    string `json:"artist"`
-	SongCount int32  `json:"song_count"`
+type Drink struct {
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	Description  string `json:"desc"`
+	Instructions string `json:"instructions"`
 }
 
-var albums = []album{
-	{"1", "Like a Bird", "Nelly Furtado", 9},
-	{"2", "Get Back", "Ludacris", 12},
-	{"3", "Hi Hi Momma", "Tupac", 11},
+func getDrinks(c *gin.Context, db *sqlx.DB) {
+	// drinks := []Drink{}
+	var drinks []Drink
+
+	db.Select(&drinks, "SELECT * FROM drinks")
+
+	c.IndentedJSON(http.StatusOK, drinks)
 }
 
-func getAlbums(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, albums)
-}
-
-func CreateRouter() *gin.Engine {
+func CreateRouter(db *sqlx.DB) *gin.Engine {
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -31,6 +31,8 @@ func CreateRouter() *gin.Engine {
 		})
 	})
 
-	r.GET("/albums", getAlbums)
+	r.GET("/drinks", func(c *gin.Context) {
+		getDrinks(c, db)
+	})
 	return r
 }
