@@ -14,20 +14,24 @@ type Drink struct {
 	Instructions string `json:"instructions"`
 }
 
-func getDrinks(c *gin.Context, db *sqlx.DB) {
+type BaseRouter struct {
+	db *sqlx.DB
+}
+
+func (br *BaseRouter) getDrinks(c *gin.Context) {
 	// drinks := []Drink{}
 	var drinks []Drink
 
-	db.Select(&drinks, "SELECT * FROM drinks")
+	br.db.Select(&drinks, "SELECT * FROM drinks")
 
 	c.IndentedJSON(http.StatusOK, drinks)
 }
 
-func getDrinkByID(c *gin.Context, db *sqlx.DB) {
+func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 	id := c.Param("id")
 	var drink Drink
 
-	err := db.Get(&drink, "SELECT * FROM drinks WHERE id=$1", id)
+	err := br.db.Get(&drink, "SELECT * FROM drinks WHERE id=$1", id)
 	if err != nil {
 		c.JSON(http.StatusOK, "No drink with that id")
 		return
@@ -36,20 +40,25 @@ func getDrinkByID(c *gin.Context, db *sqlx.DB) {
 	c.IndentedJSON(http.StatusOK, drink)
 }
 
-func CreateRouter(db *sqlx.DB) *gin.Engine {
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
+func CreateNewRouter(db *sqlx.DB) *gin.Engine {
+	br := &BaseRouter{
+		db: db,
+	}
+
+	router := gin.Default()
+
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
 	})
 
-	r.GET("/drinks", func(c *gin.Context) {
-		getDrinks(c, db)
+	router.GET("/drinks", func(c *gin.Context) {
+		br.getDrinks(c)
 	})
-	r.GET("/drinks/:id", func(c *gin.Context) {
-		getDrinkByID(c, db)
+	router.GET("/drinks/:id", func(c *gin.Context) {
+		br.getDrinkByID(c)
 	})
 
-	return r
+	return router
 }

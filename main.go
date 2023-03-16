@@ -18,7 +18,7 @@ func main() {
 	}
 	fmt.Println("connection to postgres successful!")
 
-	r := router.CreateRouter(db)
+	r := router.CreateNewRouter(db)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
