@@ -23,6 +23,19 @@ func getDrinks(c *gin.Context, db *sqlx.DB) {
 	c.IndentedJSON(http.StatusOK, drinks)
 }
 
+func getDrinkByID(c *gin.Context, db *sqlx.DB) {
+	id := c.Param("id")
+	var drink Drink
+
+	err := db.Get(&drink, "SELECT * FROM drinks WHERE id=$1", id)
+	if err != nil {
+		c.JSON(http.StatusOK, "No drink with that id")
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, drink)
+}
+
 func CreateRouter(db *sqlx.DB) *gin.Engine {
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
@@ -34,5 +47,9 @@ func CreateRouter(db *sqlx.DB) *gin.Engine {
 	r.GET("/drinks", func(c *gin.Context) {
 		getDrinks(c, db)
 	})
+	r.GET("/drinks/:id", func(c *gin.Context) {
+		getDrinkByID(c, db)
+	})
+
 	return r
 }
