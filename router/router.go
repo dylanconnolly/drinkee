@@ -96,12 +96,6 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 
 	router := gin.Default()
 
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-
 	router.GET("/drinks", func(c *gin.Context) {
 		br.getDrinks(c)
 	})
