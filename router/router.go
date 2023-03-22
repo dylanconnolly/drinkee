@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,13 @@ type Drink struct {
 	Name         string `json:"name"`
 	Description  string `json:"desc"`
 	Instructions string `json:"instructions"`
+}
+
+type NewDrinkRequest struct {
+	Name          string `json:"name" binding:"required"`
+	Description   string `json:"description" binding:"required"`
+	Instructions  string `json:"instructions" binding:"required"`
+	IngredientIDs []int  `json:"ingredient_ids" binding:"required"`
 }
 
 type Ingredient struct {
@@ -48,6 +56,29 @@ func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, drink)
+}
+
+func (br *BaseRouter) createDrink(c *gin.Context) {
+	var dr NewDrinkRequest
+	var drinkID int
+
+	err := c.ShouldBindJSON(&dr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "can't bind: %s", err)
+		return
+	}
+
+	stmt, err := br.db.PrepareNamed("INSERT INTO drinks (name, description, instructions) VALUES (:name, :description, :instructions) RETURNING id")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "insert failed: %s", err)
+		return
+	}
+	// drinkIngredientsUpdate := "INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)"
+	err = stmt.Get(&drinkID, dr)
+
+	fmt.Println(drinkID)
+
+	c.JSON(202, "added new drink")
 }
 
 func (br *BaseRouter) getDrinkIngredients(c *gin.Context) {
@@ -101,6 +132,9 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	})
 	router.GET("/drinks/:id", func(c *gin.Context) {
 		br.getDrinkByID(c)
+	})
+	router.POST("/drinks", func(c *gin.Context) {
+		br.createDrink(c)
 	})
 	router.GET("drinks/:id/ingredients", func(c *gin.Context) {
 		br.getDrinkIngredients(c)
