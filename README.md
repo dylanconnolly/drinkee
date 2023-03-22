@@ -17,3 +17,12 @@ To force DB to version
 migrate -database "postgres://localhost:5432/drinkee?sslmode=disable" -path db/migrations force <version>
 ```
 e.g. `migrate -database "postgres://localhost:5432/drinkee?sslmode=disable" -path db/migrations force 10`
+
+
+### Testing
+Integration tests use dockertest to spin up and tear down containers running instances of postgres DBs.
+
+Test a single file
+```
+go test -race /path/to/file
+```
