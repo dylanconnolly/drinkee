@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type Drink struct {
@@ -16,10 +17,10 @@ type Drink struct {
 }
 
 type NewDrinkRequest struct {
-	Name          string `json:"name" binding:"required"`
-	Description   string `json:"description" binding:"required"`
-	Instructions  string `json:"instructions" binding:"required"`
-	IngredientIDs []int  `json:"ingredient_ids" binding:"required"`
+	Name             string            `json:"name" binding:"required"`
+	Description      string            `json:"description" binding:"required"`
+	Instructions     string            `json:"instructions" binding:"required"`
+	DrinkIngredients []DrinkIngredient `json:"drink_ingredients" binding:"required"`
 }
 
 type Ingredient struct {
@@ -60,7 +61,6 @@ func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 
 func (br *BaseRouter) createDrink(c *gin.Context) {
 	var dr NewDrinkRequest
-	var drinkID int
 
 	err := c.ShouldBindJSON(&dr)
 	if err != nil {
@@ -68,22 +68,36 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 		return
 	}
 
-	stmt, err := br.db.PrepareNamed("INSERT INTO drinks (name, description, instructions) VALUES (:name, :description, :instructions) RETURNING id")
-	if err != nil {
-		c.String(http.StatusInternalServerError, "insert failed: %s", err)
-		return
-	}
-	err = stmt.Get(&drinkID, dr)
+	// stmt, err := br.db.PrepareNamed("INSERT INTO drinks (name, description, instructions) VALUES (:name, :description, :instructions) RETURNING id")
+	// if err != nil {
+	// 	c.String(http.StatusInternalServerError, "insert failed: %s", err)
+	// 	return
+	// }
+	// err = stmt.Get(&drinkID, dr)
 
-	for _, id := range dr.IngredientIDs {
-		_, err := br.db.Exec("INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)", drinkID, id, "100 shots")
-		if err != nil {
-			c.String(http.StatusInternalServerError, "drink ingredients insert failed: %s", err)
-			return
-		}
-	}
+	// for _, id := range dr.IngredientIDs {
+	// 	_, err := br.db.Exec("INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)", drinkID, id, "100 shots")
+	// 	if err != nil {
+	// 		c.String(http.StatusInternalServerError, "drink ingredients insert failed: %s", err)
+	// 		return
+	// 	}
+	// }
 
-	fmt.Println(drinkID)
+	fmt.Printf("%+v", dr.DrinkIngredients)
+
+	br.db.MustExec(`
+		WITH drink AS (
+			INSERT INTO drinks (name, description, instructions)
+			VALUES ($1, $2, $3)
+			RETURNING id
+		),
+		ingredient_ids AS (
+			SELECT id, name FROM ingredients WHERE name IN ('Tequila', 'Triple sec', 'Lime juice', 'Ice')
+		),
+		INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
+		SELECT drink.id, ingredient_ids.id, drink_ingredients.measurement
+		FROM drink, ingredient_ids
+		JOIN UNNEST($4::drink_ingredients[]) AS drink_ingredients ON drink_ingredients.name = ingredient_ids.name`, dr.Name, dr.Description, dr.Instructions, pq.Array(dr.DrinkIngredients))
 
 	c.JSON(202, "added new drink")
 }
