@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,7 @@ type Drink struct {
 	Instructions string `json:"instructions"`
 }
 
-type NewDrinkRequest struct {
+type CreateDrinkRequest struct {
 	Name             string            `json:"name" binding:"required"`
 	Description      string            `json:"description" binding:"required"`
 	Instructions     string            `json:"instructions" binding:"required"`
@@ -60,12 +59,44 @@ func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 }
 
 func (br *BaseRouter) createDrink(c *gin.Context) {
-	var dr NewDrinkRequest
+	var dr CreateDrinkRequest
+	var drinkID int
+	var ingredientNames []string
+	var ingredientIDs []int
 
 	err := c.ShouldBindJSON(&dr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "can't bind: %s", err)
 		return
+	}
+
+	tx, err := br.db.Beginx()
+	defer tx.Rollback()
+
+	err = tx.Get(&drinkID, `INSERT INTO drinks (name, description, instructions) VALUES ($1, $2, $3) RETURNING id`, dr.Name, dr.Description, dr.Instructions)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error adding drink: %s", err)
+		return
+	}
+
+	for _, di := range dr.DrinkIngredients {
+		ingredientNames = append(ingredientNames, di.Name)
+	}
+
+	rows, err := tx.Queryx(`SELECT id FROM ingredients WHERE name = ANY($1)`, pq.Array(ingredientNames))
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error adding drink: %s", err)
+		return
+	}
+
+	for rows.Next() {
+		var id int
+		err = rows.Scan(&id)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "error adding drink: %s", err)
+			return
+		}
+		ingredientIDs = append(ingredientIDs, id)
 	}
 
 	// stmt, err := br.db.PrepareNamed("INSERT INTO drinks (name, description, instructions) VALUES (:name, :description, :instructions) RETURNING id")
@@ -83,23 +114,8 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 	// 	}
 	// }
 
-	fmt.Printf("%+v", dr.DrinkIngredients)
-
-	br.db.MustExec(`
-		WITH drink AS (
-			INSERT INTO drinks (name, description, instructions)
-			VALUES ($1, $2, $3)
-			RETURNING id
-		),
-		ingredient_ids AS (
-			SELECT id, name FROM ingredients WHERE name IN ('Tequila', 'Triple sec', 'Lime juice', 'Ice')
-		),
-		INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
-		SELECT drink.id, ingredient_ids.id, drink_ingredients.measurement
-		FROM drink, ingredient_ids
-		JOIN UNNEST($4::drink_ingredients[]) AS drink_ingredients ON drink_ingredients.name = ingredient_ids.name`, dr.Name, dr.Description, dr.Instructions, pq.Array(dr.DrinkIngredients))
-
-	c.JSON(202, "added new drink")
+	c.String(202, "added new drink id: %d\n ingredient ID list: %+v", drinkID, ingredientIDs)
+	return
 }
 
 func (br *BaseRouter) getDrinkIngredients(c *gin.Context) {
