@@ -73,8 +73,15 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "insert failed: %s", err)
 		return
 	}
-	// drinkIngredientsUpdate := "INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)"
 	err = stmt.Get(&drinkID, dr)
+
+	for _, id := range dr.IngredientIDs {
+		_, err := br.db.Exec("INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)", drinkID, id, "100 shots")
+		if err != nil {
+			c.String(http.StatusInternalServerError, "drink ingredients insert failed: %s", err)
+			return
+		}
+	}
 
 	fmt.Println(drinkID)
 
