@@ -1,6 +1,7 @@
 package router
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -60,9 +61,7 @@ func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 
 func (br *BaseRouter) createDrink(c *gin.Context) {
 	var dr CreateDrinkRequest
-	var drinkID int
 	var ingredientNames []string
-	var ingredientIDs []int
 
 	err := c.ShouldBindJSON(&dr)
 	if err != nil {
@@ -70,49 +69,35 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 		return
 	}
 
-	tx, err := br.db.Beginx()
-	defer tx.Rollback()
-
-	err = tx.Get(&drinkID, `INSERT INTO drinks (name, description, instructions) VALUES ($1, $2, $3) RETURNING id`, dr.Name, dr.Description, dr.Instructions)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "error adding drink: %s", err)
-		return
-	}
-
 	for _, di := range dr.DrinkIngredients {
 		ingredientNames = append(ingredientNames, di.Name)
 	}
 
-	rows, err := tx.Queryx(`SELECT id FROM ingredients WHERE name = ANY($1)`, pq.Array(ingredientNames))
+	drinkIngredientsJSON, err := json.Marshal(dr.DrinkIngredients)
+
+	_, err = br.db.Exec(`
+	WITH drink AS (
+		INSERT INTO drinks (name, description, instructions)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	),
+	ingredient_ids AS (
+		SELECT id, name FROM ingredients WHERE name = ANY($4)
+	),
+	ingredient_data AS (
+		SELECT * FROM json_populate_recordset(null::ingredient_data, $5)
+	)
+	INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
+	SELECT drink.id, ingredient_ids.id, ingredient_data.measurement
+	FROM drink, ingredient_ids, ingredient_data
+	WHERE ingredient_ids.name = ingredient_data.name`, dr.Name, dr.Description, dr.Instructions, pq.Array(ingredientNames), string(drinkIngredientsJSON))
+
 	if err != nil {
 		c.String(http.StatusInternalServerError, "error adding drink: %s", err)
 		return
 	}
 
-	for rows.Next() {
-		var id int
-		err = rows.Scan(&id)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "error adding drink: %s", err)
-			return
-		}
-		ingredientIDs = append(ingredientIDs, id)
-	}
-
-	stmt, err := tx.Preparex(`INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)`)
-
-	for i, ingredient := range dr.DrinkIngredients {
-		_, err = stmt.Exec(drinkID, ingredientIDs[i], ingredient.Measurement)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "error adding drink: %s", err)
-			return
-		}
-	}
-
-	err = tx.Commit()
-
-	c.String(202, "added new drink id: %d\n ingredient ID list: %+v", drinkID, ingredientIDs)
-	return
+	c.String(202, "added new drink\n")
 }
 
 func (br *BaseRouter) getDrinkIngredients(c *gin.Context) {
