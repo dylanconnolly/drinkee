@@ -99,20 +99,17 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 		ingredientIDs = append(ingredientIDs, id)
 	}
 
-	// stmt, err := br.db.PrepareNamed("INSERT INTO drinks (name, description, instructions) VALUES (:name, :description, :instructions) RETURNING id")
-	// if err != nil {
-	// 	c.String(http.StatusInternalServerError, "insert failed: %s", err)
-	// 	return
-	// }
-	// err = stmt.Get(&drinkID, dr)
+	stmt, err := tx.Preparex(`INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)`)
 
-	// for _, id := range dr.IngredientIDs {
-	// 	_, err := br.db.Exec("INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES ($1, $2, $3)", drinkID, id, "100 shots")
-	// 	if err != nil {
-	// 		c.String(http.StatusInternalServerError, "drink ingredients insert failed: %s", err)
-	// 		return
-	// 	}
-	// }
+	for i, ingredient := range dr.DrinkIngredients {
+		_, err = stmt.Exec(drinkID, ingredientIDs[i], ingredient.Measurement)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "error adding drink: %s", err)
+			return
+		}
+	}
+
+	err = tx.Commit()
 
 	c.String(202, "added new drink id: %d\n ingredient ID list: %+v", drinkID, ingredientIDs)
 	return
