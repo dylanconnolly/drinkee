@@ -37,6 +37,10 @@ type BaseRouter struct {
 	db *sqlx.DB
 }
 
+type generateCocktailsRequest struct {
+	Ingredients []Ingredient `json:"ingredients"`
+}
+
 func (br *BaseRouter) getDrinks(c *gin.Context) {
 	// drinks := []Drink{}
 	var drinks []Drink
@@ -139,6 +143,18 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, ingredient)
 }
 
+func (br *BaseRouter) generateCocktails(c *gin.Context) {
+	var ingredients generateCocktailsRequest
+
+	err := c.ShouldBindJSON(&ingredients)
+	if err != nil {
+		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
+	}
+
+	c.String(http.StatusAccepted, "ingredients list: %s", ingredients)
+
+}
+
 func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	br := &BaseRouter{
 		db: db,
@@ -163,6 +179,9 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	})
 	router.GET("/ingredients/:id", func(c *gin.Context) {
 		br.getIngredientByID(c)
+	})
+	router.POST("/generateCocktails", func(c *gin.Context) {
+		br.generateCocktails(c)
 	})
 
 	return router
