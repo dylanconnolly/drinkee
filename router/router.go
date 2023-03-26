@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -37,7 +38,7 @@ type BaseRouter struct {
 	db *sqlx.DB
 }
 
-type generateCocktailsRequest struct {
+type IngredientsListRequest struct {
 	Ingredients []Ingredient `json:"ingredients"`
 }
 
@@ -144,15 +145,27 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 }
 
 func (br *BaseRouter) generateCocktails(c *gin.Context) {
-	var ingredients generateCocktailsRequest
+	var ingredients IngredientsListRequest
 
 	err := c.ShouldBindJSON(&ingredients)
 	if err != nil {
 		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
 	}
 
-	c.String(http.StatusAccepted, "ingredients list: %s", ingredients)
+	fmt.Printf("ingredient list: %v", ingredients)
+	// c.String(http.StatusAccepted, "ingredients list: %s", ingredients)
 
+}
+
+func (br *BaseRouter) createIngredientsList(c *gin.Context) {
+	var ingredients IngredientsListRequest
+
+	err := c.ShouldBindJSON(&ingredients)
+	if err != nil {
+		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
+	}
+
+	fmt.Printf("ingredient list: %v", ingredients)
 }
 
 func CreateNewRouter(db *sqlx.DB) *gin.Engine {
@@ -182,6 +195,9 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	})
 	router.POST("/generateCocktails", func(c *gin.Context) {
 		br.generateCocktails(c)
+	})
+	router.POST("/ingredientsList", func(c *gin.Context) {
+		br.createIngredientsList(c)
 	})
 
 	return router
