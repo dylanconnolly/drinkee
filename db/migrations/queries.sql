@@ -49,4 +49,17 @@ ingredient_ids AS (
 INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
 SELECT drink.id, ingredient_ids.id, ingredient_data.measurement
 FROM drink, ingredient_ids
-JOIN UNNEST($5::ingredient_data[]) AS ingredient_data ON ingredient_data.name = ingredient_ids.name`, dr.Name, dr.Description, dr.Instructions, pq.Array(ingredientNames), pq.Array(ingredientMeasurements))
+JOIN UNNEST($5::ingredient_data[]) AS ingredient_data ON ingredient_data.name = ingredient_ids.name, dr.Name, dr.Description, dr.Instructions, pq.Array(ingredientNames), pq.Array(ingredientMeasurements))
+
+
+-- from list of ingredient IDs return drinks containing at least 1 of those ingredients and append a column (n) to show number of ingredients present in list
+SELECT d.*, COUNT(*) AS N FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id JOIN ingredients i ON di.ingredient_id=i.id WHERE i.id IN (2,7,8) GROUP BY d.id;
+
+-- select drinks only that have the exact ingredients in list (can't have extra ingredients)
+SELECT d.* FROM drinks d WHERE Not Exists (SELECT 1 FROM ingredients i WHERE id IN (2,7,8) AND Not Exists (SELECT 1 FROM drink_ingredients di WHERE di.drink_id=d.id AND di.ingredient_id=i.id));
+
+-- get total ingredient count alongside number of ingredients we have available
+SELECT d.*, COUNT(*) AS ingredient_count, (SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id IN (2,7,8) GROUP BY d.id;
+
+-- return only drinks that we can make
+SELECT * FROM (SELECT d.*, COUNT(*) AS ic, (SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS ti FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id IN (2,7,8) GROUP BY d.id) AS joiny WHERE ic=ti;
