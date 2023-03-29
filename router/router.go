@@ -145,7 +145,7 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 }
 
 func (br *BaseRouter) generateCocktails(c *gin.Context) {
-	c.String(http.StatusOK, "normal generate cocktails")
+	c.String(http.StatusOK, "unstrict generate cocktails")
 }
 
 func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
@@ -194,35 +194,41 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 
 	router := gin.Default()
 
-	router.GET("/drinks", func(c *gin.Context) {
-		br.getDrinks(c)
-	})
-	router.GET("/drinks/:id", func(c *gin.Context) {
-		br.getDrinkByID(c)
-	})
-	router.POST("/drinks", func(c *gin.Context) {
-		br.createDrink(c)
-	})
-	router.GET("drinks/:id/ingredients", func(c *gin.Context) {
-		br.getDrinkIngredients(c)
-	})
-	router.GET("/ingredients", func(c *gin.Context) {
-		br.getIngredients(c)
-	})
-	router.GET("/ingredients/:id", func(c *gin.Context) {
-		br.getIngredientByID(c)
-	})
-	router.POST("/generateCocktails", func(c *gin.Context) {
-		strict := c.Query("strict")
-		if strict == "true" {
-			br.generateCocktailsStrict(c)
-		} else {
-			br.generateCocktails(c)
+	api := router.Group("/api")
+	{
+		v1 := api.Group("/v1")
+		{
+			v1.GET("/drinks", func(c *gin.Context) {
+				br.getDrinks(c)
+			})
+			v1.GET("/drinks/:id", func(c *gin.Context) {
+				br.getDrinkByID(c)
+			})
+			v1.POST("/drinks", func(c *gin.Context) {
+				br.createDrink(c)
+			})
+			v1.GET("drinks/:id/ingredients", func(c *gin.Context) {
+				br.getDrinkIngredients(c)
+			})
+			v1.GET("/ingredients", func(c *gin.Context) {
+				br.getIngredients(c)
+			})
+			v1.GET("/ingredients/:id", func(c *gin.Context) {
+				br.getIngredientByID(c)
+			})
+			v1.POST("/generateCocktails", func(c *gin.Context) {
+				strict := c.Query("strict")
+				if strict == "true" {
+					br.generateCocktailsStrict(c)
+				} else {
+					br.generateCocktails(c)
+				}
+			})
+			v1.POST("/ingredientsList", func(c *gin.Context) {
+				br.createIngredientsList(c)
+			})
 		}
-	})
-	router.POST("/ingredientsList", func(c *gin.Context) {
-		br.createIngredientsList(c)
-	})
+	}
 
 	return router
 }
