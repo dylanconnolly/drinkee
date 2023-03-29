@@ -145,16 +145,35 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 }
 
 func (br *BaseRouter) generateCocktails(c *gin.Context) {
-	var ingredients IngredientsListRequest
+	c.String(http.StatusOK, "normal generate cocktails")
+}
 
-	err := c.ShouldBindJSON(&ingredients)
+func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
+	var ingredientList IngredientsListRequest
+	var ingredientIDs []int
+	var drink Drink
+	var drinks []Drink
+
+	err := c.ShouldBindJSON(&ingredientList)
 	if err != nil {
 		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
 	}
 
-	fmt.Printf("ingredient list: %v", ingredients)
-	// c.String(http.StatusAccepted, "ingredients list: %s", ingredients)
+	for _, ingredient := range ingredientList.Ingredients {
+		ingredientIDs = append(ingredientIDs, ingredient.ID)
+	}
 
+	queryStr := `SELECT id,name,description,instructions FROM (SELECT d.*, COUNT(*) AS ingredients_present, (SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS joiny WHERE ingredients_present=total_ingredients`
+	rows, err := br.db.Queryx(queryStr, pq.Array(ingredientIDs))
+	for rows.Next() {
+		err = rows.StructScan(&drink)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "error scanning drink into struct: ", err)
+		}
+		drinks = append(drinks, drink)
+	}
+
+	c.IndentedJSON(http.StatusOK, drinks)
 }
 
 func (br *BaseRouter) createIngredientsList(c *gin.Context) {
@@ -194,7 +213,12 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 		br.getIngredientByID(c)
 	})
 	router.POST("/generateCocktails", func(c *gin.Context) {
-		br.generateCocktails(c)
+		strict := c.Query("strict")
+		if strict == "true" {
+			br.generateCocktailsStrict(c)
+		} else {
+			br.generateCocktails(c)
+		}
 	})
 	router.POST("/ingredientsList", func(c *gin.Context) {
 		br.createIngredientsList(c)
