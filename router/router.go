@@ -13,8 +13,14 @@ import (
 type Drink struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
-	Description  string `json:"description"`
+	DisplayName  string `json:"displayName" db:"display_name"`
+	Description  string `json:"description,omitempty"`
 	Instructions string `json:"instructions"`
+}
+
+type DrinkResponse struct {
+	Drink
+	DrinkIngredients []DrinkIngredient
 }
 
 type CreateDrinkRequest struct {
@@ -28,11 +34,12 @@ type CreateDrinkRequest struct {
 type Ingredient struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
+	DisplayName string `json:"displayName" db:"display_name"`
 }
 
 type DrinkIngredient struct {
 	Name        string `json:"name"`
+	DisplayName string `json:"displayName" db:"display_name"`
 	Measurement string `json:"measurement"`
 }
 
@@ -54,7 +61,6 @@ type CreateIngredientsListRequest struct {
 }
 
 func (br *BaseRouter) getDrinks(c *gin.Context) {
-	// drinks := []Drink{}
 	var drinks []Drink
 
 	br.db.Select(&drinks, "SELECT * FROM drinks")
@@ -65,14 +71,29 @@ func (br *BaseRouter) getDrinks(c *gin.Context) {
 func (br *BaseRouter) getDrinkByID(c *gin.Context) {
 	id := c.Param("id")
 	var drink Drink
+	var drinkIngredients []DrinkIngredient
 
-	err := br.db.Get(&drink, "SELECT * FROM drinks WHERE id=$1", id)
+	err := br.db.Get(&drink, "SELECT id, name, display_name, description, instructions FROM drinks WHERE id=$1", id)
 	if err != nil {
-		c.JSON(http.StatusOK, "No drink with that id")
+		c.String(http.StatusBadRequest, "No drink with that id:", err)
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, drink)
+	queryStr :=
+		`
+		SELECT ingredients.name, ingredients.display_name, drink_ingredients.measurement
+		FROM drink_ingredients JOIN ingredients ON ingredients.id = drink_ingredients.ingredient_id
+		WHERE drink_id=$1
+		`
+
+	err = br.db.Select(&drinkIngredients, queryStr, id)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "couldnt find drink ingredients idk", err)
+	}
+
+	drinkData := DrinkResponse{drink, drinkIngredients}
+
+	c.IndentedJSON(http.StatusOK, drinkData)
 }
 
 func (br *BaseRouter) createDrink(c *gin.Context) {
