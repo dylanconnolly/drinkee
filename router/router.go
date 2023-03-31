@@ -20,7 +20,7 @@ type Drink struct {
 
 type DrinkResponse struct {
 	Drink
-	DrinkIngredients []DrinkIngredient
+	DrinkIngredients []DrinkIngredient `json:"drinkIngredients"`
 }
 
 type CreateDrinkRequest struct {
@@ -63,7 +63,7 @@ type CreateIngredientsListRequest struct {
 func (br *BaseRouter) getDrinks(c *gin.Context) {
 	var drinks []Drink
 
-	br.db.Select(&drinks, "SELECT * FROM drinks")
+	br.db.Select(&drinks, "SELECT id, name, display_name, description, instructions FROM drinks")
 
 	c.IndentedJSON(http.StatusOK, drinks)
 }
