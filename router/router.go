@@ -21,12 +21,13 @@ type CreateDrinkRequest struct {
 	Name             string            `json:"name" binding:"required"`
 	Description      string            `json:"description" binding:"required"`
 	Instructions     string            `json:"instructions" binding:"required"`
-	DrinkIngredients []DrinkIngredient `json:"drink_ingredients" binding:"required"`
+	DrinkIngredients []DrinkIngredient `json:"drinkIngredients" binding:"required"`
 }
 
 type Ingredient struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 }
 
 type DrinkIngredient struct {
@@ -40,6 +41,15 @@ type BaseRouter struct {
 
 type IngredientsListRequest struct {
 	Ingredients []Ingredient `json:"ingredients"`
+}
+
+type CreateIngredientRequest struct {
+	Name        string `json:"name" binding:"required"`
+	DisplayName string `json:"displayName" binding:"required" db:"display_name"`
+}
+
+type CreateIngredientsListRequest struct {
+	Ingredients []CreateIngredientRequest `json:"ingredients" binding:"required"`
 }
 
 func (br *BaseRouter) getDrinks(c *gin.Context) {
@@ -144,6 +154,26 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, ingredient)
 }
 
+func (br *BaseRouter) createIngredientsFromList(c *gin.Context) {
+	var ilr CreateIngredientsListRequest
+
+	err := c.ShouldBindJSON(&ilr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "can't bind request to ingredient list: %s", err)
+		return
+	}
+
+	fmt.Printf("%+v", ilr.Ingredients)
+
+	_, err = br.db.NamedExec(`INSERT INTO ingredients (name, display_name) VALUES (:name, :display_name)`, ilr.Ingredients)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error adding ingredients: ", err)
+		return
+	}
+
+	c.String(http.StatusAccepted, "added ingredients")
+}
+
 func (br *BaseRouter) generateCocktails(c *gin.Context) {
 	c.String(http.StatusOK, "unstrict generate cocktails")
 }
@@ -212,6 +242,9 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 			})
 			v1.GET("/ingredients", func(c *gin.Context) {
 				br.getIngredients(c)
+			})
+			v1.POST("/ingredients", func(c *gin.Context) {
+				br.createIngredientsFromList(c)
 			})
 			v1.GET("/ingredients/:id", func(c *gin.Context) {
 				br.getIngredientByID(c)

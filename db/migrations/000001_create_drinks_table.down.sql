@@ -1,1 +1,2 @@
 DROP TABLE IF EXISTS drinks;
+DROP FUNCTION IF EXISTS set_updated_at();
