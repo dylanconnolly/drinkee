@@ -19,7 +19,8 @@ type Drink struct {
 
 type CreateDrinkRequest struct {
 	Name             string            `json:"name" binding:"required"`
-	Description      string            `json:"description" binding:"required"`
+	DisplayName      string            `json:"displayName" binding:"required"`
+	Description      string            `json:"description"`
 	Instructions     string            `json:"instructions" binding:"required"`
 	DrinkIngredients []DrinkIngredient `json:"drinkIngredients" binding:"required"`
 }
@@ -92,20 +93,20 @@ func (br *BaseRouter) createDrink(c *gin.Context) {
 
 	_, err = br.db.Exec(`
 	WITH drink AS (
-		INSERT INTO drinks (name, description, instructions)
-		VALUES ($1, $2, $3)
+		INSERT INTO drinks (name, display_name, description, instructions)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	),
 	ingredient_ids AS (
-		SELECT id, name FROM ingredients WHERE name = ANY($4)
+		SELECT id, name FROM ingredients WHERE name = ANY($5)
 	),
 	ingredient_data AS (
-		SELECT * FROM json_populate_recordset(null::ingredient_data, $5)
+		SELECT * FROM json_populate_recordset(null::ingredient_data, $6)
 	)
 	INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
 	SELECT drink.id, ingredient_ids.id, ingredient_data.measurement
 	FROM drink, ingredient_ids, ingredient_data
-	WHERE ingredient_ids.name = ingredient_data.name`, dr.Name, dr.Description, dr.Instructions, pq.Array(ingredientNames), string(drinkIngredientsJSON))
+	WHERE ingredient_ids.name = ingredient_data.name`, dr.Name, dr.DisplayName, dr.Description, dr.Instructions, pq.Array(ingredientNames), string(drinkIngredientsJSON))
 
 	if err != nil {
 		c.String(http.StatusInternalServerError, "error adding drink: %s", err)
@@ -160,10 +161,9 @@ func (br *BaseRouter) createIngredientsFromList(c *gin.Context) {
 	err := c.ShouldBindJSON(&ilr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "can't bind request to ingredient list: %s", err)
+		fmt.Printf("can't bind request to ingredient list: %+v", err)
 		return
 	}
-
-	fmt.Printf("%+v", ilr.Ingredients)
 
 	_, err = br.db.NamedExec(`INSERT INTO ingredients (name, display_name) VALUES (:name, :display_name)`, ilr.Ingredients)
 	if err != nil {
