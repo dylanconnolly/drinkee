@@ -1,6 +1,7 @@
 package router
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,7 +21,7 @@ type Drink struct {
 
 type DrinkResponse struct {
 	Drink
-	DrinkIngredients []DrinkIngredient `json:"drinkIngredients"`
+	DrinkIngredients DrinkIngredientSlice `json:"drinkIngredients" db:"drink_ingredients"`
 }
 
 type CreateDrinkRequest struct {
@@ -43,6 +44,37 @@ type DrinkIngredient struct {
 	Measurement string `json:"measurement"`
 }
 
+type DrinkIngredientSlice []DrinkIngredient
+
+func (dis *DrinkIngredientSlice) Scan(src interface{}) error {
+	var data []byte
+	switch v := src.(type) {
+	case string:
+		data = []byte(v)
+	case []byte:
+		data = v
+	default:
+		return nil
+	}
+	return json.Unmarshal(data, dis)
+}
+
+func (dis DrinkIngredientSlice) Value() (driver.Value, error) {
+	return json.Marshal(dis)
+}
+
+// func (di *DrinkIngredient) Scan(src any) error {
+// 	var data []byte
+// 	switch v := src.(type) {
+// 	case string:
+// 		data = []byte(v)
+// 	case []byte:
+// 		data = v
+// 	}
+
+// 	return json.Unmarshal(data, di)
+// }
+
 type BaseRouter struct {
 	db *sqlx.DB
 }
@@ -61,9 +93,40 @@ type CreateIngredientsListRequest struct {
 }
 
 func (br *BaseRouter) getDrinks(c *gin.Context) {
-	var drinks []Drink
+	var drinks []DrinkResponse
+	// var drinkIngredients []DrinkIngredient
 
-	br.db.Select(&drinks, "SELECT id, name, display_name, description, instructions FROM drinks")
+	// queryStr := `
+	// SELECT d.id, d.name, d.display_name, d.description, d.instructions, array_agg(jsonb_build_object('name', i.name, 'display_name', i.display_name, 'measurement', di.measurement)) as drink_ingredients
+	// FROM drinks d
+	// JOIN drink_ingredients di ON di.drink_id=d.id
+	// JOIN ingredients i ON di.ingredient_id=i.id
+	// GROUP BY d.id, d.name ORDER BY d.name;
+	// `
+	queryStr := `
+	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'display_name', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+	FROM drinks d 
+	JOIN drink_ingredients di ON di.drink_id=d.id
+	JOIN ingredients i ON di.ingredient_id=i.id 
+	GROUP BY d.id, d.name ORDER BY d.name;
+	`
+	err := br.db.Select(&drinks, queryStr)
+	// rows, err := br.db.Queryx(queryStr)
+	// err := br.db.Select(&drinks, "SELECT d.id, d.name, d.display_name, d.description, d.instructions, i.name, i.display_name, di.measurement FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id JOIN ingredients i ON di.ingredient_id=i.id")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "err= %s", err)
+	}
+
+	// for rows.Next() {
+	// 	var name string
+	// 	// var di DrinkIngredientList
+	// 	var dis DrinkIngredientSlice
+	// 	err = rows.Scan(&name, &dis)
+	// 	if err != nil {
+	// 		c.String(http.StatusInternalServerError, "err scanning: %s\n", err)
+	// 	}
+	// 	fmt.Printf("drink scan: %+v \n", dis)
+	// }
 
 	c.IndentedJSON(http.StatusOK, drinks)
 }
@@ -142,7 +205,7 @@ func (br *BaseRouter) getDrinkIngredients(c *gin.Context) {
 	var drinkIngredients []DrinkIngredient
 
 	queryStr := `
-	SELECT ingredients.name, drink_ingredients.measurement
+	SELECT ingredients.name, ingredients.display_name, drink_ingredients.measurement
 	FROM drink_ingredients JOIN ingredients ON ingredients.id = drink_ingredients.ingredient_id
 	WHERE drink_id=$1`
 
