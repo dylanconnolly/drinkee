@@ -94,39 +94,20 @@ type CreateIngredientsListRequest struct {
 
 func (br *BaseRouter) getDrinks(c *gin.Context) {
 	var drinks []DrinkResponse
-	// var drinkIngredients []DrinkIngredient
 
-	// queryStr := `
-	// SELECT d.id, d.name, d.display_name, d.description, d.instructions, array_agg(jsonb_build_object('name', i.name, 'display_name', i.display_name, 'measurement', di.measurement)) as drink_ingredients
-	// FROM drinks d
-	// JOIN drink_ingredients di ON di.drink_id=d.id
-	// JOIN ingredients i ON di.ingredient_id=i.id
-	// GROUP BY d.id, d.name ORDER BY d.name;
-	// `
 	queryStr := `
-	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'display_name', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
 	FROM drinks d 
 	JOIN drink_ingredients di ON di.drink_id=d.id
 	JOIN ingredients i ON di.ingredient_id=i.id 
 	GROUP BY d.id, d.name ORDER BY d.name;
 	`
+
 	err := br.db.Select(&drinks, queryStr)
-	// rows, err := br.db.Queryx(queryStr)
-	// err := br.db.Select(&drinks, "SELECT d.id, d.name, d.display_name, d.description, d.instructions, i.name, i.display_name, di.measurement FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id JOIN ingredients i ON di.ingredient_id=i.id")
+
 	if err != nil {
 		c.String(http.StatusInternalServerError, "err= %s", err)
 	}
-
-	// for rows.Next() {
-	// 	var name string
-	// 	// var di DrinkIngredientList
-	// 	var dis DrinkIngredientSlice
-	// 	err = rows.Scan(&name, &dis)
-	// 	if err != nil {
-	// 		c.String(http.StatusInternalServerError, "err scanning: %s\n", err)
-	// 	}
-	// 	fmt.Printf("drink scan: %+v \n", dis)
-	// }
 
 	c.IndentedJSON(http.StatusOK, drinks)
 }
