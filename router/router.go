@@ -237,8 +237,8 @@ func (br *BaseRouter) generateCocktails(c *gin.Context) {
 func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
 	var ingredientList IngredientsListRequest
 	var ingredientIDs []int
-	var drink Drink
-	var drinks []Drink
+	// var drink Drink
+	var drinks []DrinkResponse
 
 	err := c.ShouldBindJSON(&ingredientList)
 	if err != nil {
@@ -250,16 +250,42 @@ func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
 		ingredientIDs = append(ingredientIDs, ingredient.ID)
 	}
 
-	queryStr := `SELECT id,name,description,instructions FROM (SELECT d.*, COUNT(*) AS ingredients_present, (SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS joiny WHERE ingredients_present=total_ingredients`
-	rows, err := br.db.Queryx(queryStr, pq.Array(ingredientIDs))
-	for rows.Next() {
-		err = rows.StructScan(&drink)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "error scanning drink into struct: ", err)
-			return
-		}
-		drinks = append(drinks, drink)
+	// queryStr := `
+	// 	SELECT id,name,description,instructions
+	// 	FROM
+	// 		(SELECT d.*, COUNT(*) AS ingredients_present,
+	// 		(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients
+	// 		FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS joiny
+	// 	WHERE ingredients_present=total_ingredients`
+
+	queryStr := `SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients
+		FROM 
+			(SELECT d.*, COUNT(*) AS ingredients_present,
+			(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients 
+			FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS md 
+      JOIN (SELECT d.id, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+            FROM drinks d 
+            JOIN drink_ingredients di ON di.drink_id=d.id
+            JOIN ingredients i ON di.ingredient_id=i.id 
+            GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
+		WHERE ingredients_present=total_ingredients
+		ORDER BY md.name;`
+
+	err = br.db.Select(&drinks, queryStr, pq.Array(ingredientIDs))
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error generating cocktails: %s", err)
+		return
 	}
+	// rows, err := br.db.Queryx(queryStr, pq.Array(ingredientIDs))
+
+	// for rows.Next() {
+	// 	err = rows.StructScan(&drink)
+	// 	if err != nil {
+	// 		c.String(http.StatusInternalServerError, "error scanning drink into struct: ", err)
+	// 		return
+	// 	}
+	// 	drinks = append(drinks, drink)
+	// }
 
 	c.IndentedJSON(http.StatusOK, drinks)
 }

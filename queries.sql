@@ -63,3 +63,18 @@ SELECT d.*, COUNT(*) AS ingredient_count, (SELECT COUNT(*) FROM drink_ingredient
 
 -- return only drinks that we can make
 SELECT * FROM (SELECT d.*, COUNT(*) AS ic, (SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS ti FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id IN (2,7,8) GROUP BY d.id) AS joiny WHERE ic=ti;
+
+
+
+
+SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients
+		FROM 
+			(SELECT d.*, COUNT(*) AS ingredients_present,
+			(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients 
+			FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id IN (15,24) GROUP BY d.id) AS md 
+      JOIN (SELECT d.id, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+            FROM drinks d 
+            JOIN drink_ingredients di ON di.drink_id=d.id
+            JOIN ingredients i ON di.ingredient_id=i.id 
+            GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
+		WHERE ingredients_present=total_ingredients;
