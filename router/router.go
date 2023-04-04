@@ -1,11 +1,11 @@
 package router
 
 import (
-	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -59,20 +59,8 @@ func (dis *DrinkIngredientSlice) Scan(src interface{}) error {
 	return json.Unmarshal(data, dis)
 }
 
-func (dis DrinkIngredientSlice) Value() (driver.Value, error) {
-	return json.Marshal(dis)
-}
-
-// func (di *DrinkIngredient) Scan(src any) error {
-// 	var data []byte
-// 	switch v := src.(type) {
-// 	case string:
-// 		data = []byte(v)
-// 	case []byte:
-// 		data = v
-// 	}
-
-// 	return json.Unmarshal(data, di)
+// func (dis DrinkIngredientSlice) Value() (driver.Value, error) {
+// 	return json.Marshal(dis)
 // }
 
 type BaseRouter struct {
@@ -202,7 +190,10 @@ func (br *BaseRouter) getDrinkIngredients(c *gin.Context) {
 func (br *BaseRouter) getIngredients(c *gin.Context) {
 	var ingredients []Ingredient
 
-	br.db.Select(&ingredients, "SELECT * FROM ingredients")
+	err := br.db.Select(&ingredients, "SELECT id, name, display_name FROM ingredients ORDER BY name")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "err getting ingredients: %s", err)
+	}
 
 	c.IndentedJSON(http.StatusOK, ingredients)
 }
@@ -211,7 +202,7 @@ func (br *BaseRouter) getIngredientByID(c *gin.Context) {
 	id := c.Param("id")
 	var ingredient Ingredient
 
-	err := br.db.Get(&ingredient, "SELECT * FROM ingredients WHERE id=$1", id)
+	err := br.db.Get(&ingredient, "SELECT id, name, display_name FROM ingredients WHERE id=$1", id)
 	if err != nil {
 		c.JSON(http.StatusOK, "No drink with that id")
 		return
@@ -252,6 +243,7 @@ func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
 	err := c.ShouldBindJSON(&ingredientList)
 	if err != nil {
 		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
+		return
 	}
 
 	for _, ingredient := range ingredientList.Ingredients {
@@ -264,6 +256,7 @@ func (br *BaseRouter) generateCocktailsStrict(c *gin.Context) {
 		err = rows.StructScan(&drink)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "error scanning drink into struct: ", err)
+			return
 		}
 		drinks = append(drinks, drink)
 	}
@@ -288,6 +281,17 @@ func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	}
 
 	router := gin.Default()
+
+	router.Use(cors.Default())
+
+	// router.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     []string{"http://localhost:3000"},
+	// 	AllowMethods:     []string{"POST"},
+	// 	AllowHeaders:     []string{"Origin"},
+	// 	ExposeHeaders:    []string{"Content-Length"},
+	// 	AllowCredentials: true,
+	// 	MaxAge:           12 * time.Hour,
+	// }))
 
 	api := router.Group("/api")
 	{
