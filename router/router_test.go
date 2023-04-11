@@ -72,7 +72,8 @@ func startDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 }
 
 func cleanupDatabase(p *dockertest.Pool, r *dockertest.Resource) {
-	p.Purge(r)
+	fmt.Print(p, r)
+	// p.Purge(r)
 }
 
 // func TestMain(m *testing.M) {
@@ -141,11 +142,11 @@ func TestGetDrinks(t *testing.T) {
 	r := router.CreateNewRouter(db)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/drinks", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/drinks", nil)
 	r.ServeHTTP(w, req)
-
+	fmt.Print(w.Body)
 	assert.Equal(t, http.StatusOK, w.Code)
-	cleanupDatabase(p, resource)
+	defer cleanupDatabase(p, resource)
 }
 
 func TestGetIngredients(t *testing.T) {
@@ -154,7 +155,7 @@ func TestGetIngredients(t *testing.T) {
 	r := router.CreateNewRouter(db)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/ingredients", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/ingredients", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)

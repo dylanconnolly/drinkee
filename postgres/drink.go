@@ -1,9 +1,12 @@
 package postgres
 
 import (
+	"encoding/json"
+
 	"github.com/dylanconnolly/drinkee/drinkee"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type DrinkService struct {
@@ -27,6 +30,58 @@ func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.DrinkResponse, e
 	}
 
 	return drinks, nil
+}
+
+func (s *DrinkService) CreateDrink(c *gin.Context, cd *drinkee.CreateDrink) error {
+	tx, err := s.db.BeginTxx(c, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := createDrink(c, tx, cd); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (s *DrinkService) SimpleFind() {
+	s.db.Queryx("SELECT * FROM drinks")
+	s.db.Queryx(`\dt`)
+}
+
+func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
+	var ingredientNames []string
+	for _, di := range cd.DrinkIngredients {
+		ingredientNames = append(ingredientNames, di.Name)
+	}
+
+	diJSON, err := json.Marshal(cd.DrinkIngredients)
+
+	_, err = tx.Exec(`
+		WITH drink AS (
+			INSERT INTO drinks (name, display_name, description, instructions)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		),
+		ingredient_ids AS (
+			SELECT id, name FROM ingredients WHERE name = ANY($5)
+		),
+		ingredient_data AS (
+			SELECT * FROM json_populate_recordset(null::ingredient_data, $6)
+		)
+		INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement)
+		SELECT drink.id, ingredient_ids.id, ingredient_data.measurement
+		FROM drink, ingredient_ids, ingredient_data
+		WHERE ingredient_ids.name = ingredient_data.name
+	`, cd.Name, cd.DisplayName, cd.Description, cd.Instructions, pq.Array(ingredientNames), string(diJSON))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.DrinkResponse, error) {

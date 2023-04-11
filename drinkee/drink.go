@@ -19,6 +19,14 @@ type DrinkResponse struct {
 	DrinkIngredients DrinkIngredientSlice `json:"drinkIngredients" db:"drink_ingredients"`
 }
 
+type CreateDrink struct {
+	Name             string            `json:"name" binding:"required"`
+	DisplayName      string            `json:"displayName" binding:"required"`
+	Description      string            `json:"description"`
+	Instructions     string            `json:"instructions" binding:"required"`
+	DrinkIngredients []DrinkIngredient `json:"drinkIngredients" binding:"required"`
+}
+
 type DrinkIngredientSlice []DrinkIngredient
 
 func (dis *DrinkIngredientSlice) Scan(src interface{}) error {
@@ -41,7 +49,8 @@ type DrinkIngredient struct {
 }
 
 type DrinkService interface {
-	FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
+	// FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
 	FindDrinks(ctx *gin.Context) ([]*DrinkResponse, error)
-	CreateDrink(ctx *gin.Context) error
+	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
+	SimpleFind()
 }

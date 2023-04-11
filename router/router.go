@@ -110,7 +110,7 @@ func (br *BaseRouter) getDrinks(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, drinks)
-	fmt.Println("youre in new func")
+	fmt.Println("youre in OLD func")
 }
 
 func (br *BaseRouter) getDrinkByID(c *gin.Context) {

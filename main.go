@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/dylanconnolly/drinkee/http"
 	"github.com/dylanconnolly/drinkee/postgres"
-	"github.com/dylanconnolly/drinkee/router"
-	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 )
 
 type Main struct {
-	DB     *sqlx.DB
-	Router *gin.Engine
+	DB         *sqlx.DB
+	HTTPServer *http.Server
+}
+
+func CreateMain() *Main {
+	db, _ := postgres.CreatePostgresConnection()
+	return &Main{
+		DB:         db,
+		HTTPServer: http.NewServer(),
+	}
 }
 
 func main() {
@@ -23,16 +30,9 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	fmt.Println("connecting to postgres")
-	db, err := postgres.CreatePostgresConnection()
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("error connecting to postgres")
-		return
-	}
-	fmt.Println("connection to postgres successful!")
-
-	r := router.CreateNewRouter(db)
-
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	fmt.Println("creating main")
+	m := CreateMain()
+	drinkService := postgres.NewDrinkService(m.DB)
+	m.HTTPServer.DrinkService = drinkService
+	m.HTTPServer.Serve()
 }
