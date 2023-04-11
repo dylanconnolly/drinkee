@@ -46,6 +46,27 @@ func (s *DrinkService) CreateDrink(c *gin.Context, cd *drinkee.CreateDrink) erro
 	return tx.Commit()
 }
 
+func (s *DrinkService) GenerateDrinks(c *gin.Context, i []drinkee.Ingredient) ([]drinkee.DrinkResponse, error) {
+	var ingredientIDs []int
+
+	tx, err := s.db.BeginTxx(c, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	for _, ingredient := range i {
+		ingredientIDs = append(ingredientIDs, ingredient.ID)
+	}
+
+	drinks, err := generateDrinks(c, tx, ingredientIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return drinks, nil
+}
+
 func (s *DrinkService) SimpleFind() {
 	s.db.Queryx("SELECT * FROM drinks")
 	s.db.Queryx(`\dt`)
@@ -102,4 +123,54 @@ func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.DrinkResponse, error)
 	}
 
 	return drinks, nil
+}
+
+func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]drinkee.DrinkResponse, error) {
+	var drinks []drinkee.DrinkResponse
+
+	queryStr := `SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients
+		FROM 
+			(SELECT d.*, COUNT(*) AS ingredients_present,
+			(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients 
+			FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS md 
+      JOIN (SELECT d.id, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+            FROM drinks d 
+            JOIN drink_ingredients di ON di.drink_id=d.id
+            JOIN ingredients i ON di.ingredient_id=i.id 
+            GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
+		WHERE ingredients_present=total_ingredients
+		ORDER BY md.name;`
+
+	err := tx.Select(&drinks, queryStr, pq.Array(ingredientIDs))
+	if err != nil {
+		return nil, err
+	}
+
+	return drinks, nil
+}
+
+func (s *DrinkService) FindIngredients(c *gin.Context) ([]*drinkee.Ingredient, error) {
+	tx, err := s.db.BeginTxx(c, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	ingredients, err := findIngredients(c, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return ingredients, nil
+}
+
+func findIngredients(c *gin.Context, tx *sqlx.Tx) ([]*drinkee.Ingredient, error) {
+	var ingredients []*drinkee.Ingredient
+
+	err := tx.Select(&ingredients, "SELECT id, name, display_name FROM ingredients ORDER BY name")
+	if err != nil {
+		return nil, err
+	}
+
+	return ingredients, nil
 }

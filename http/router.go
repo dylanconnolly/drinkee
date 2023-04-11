@@ -13,6 +13,12 @@ func (s *Server) GenerateRoutes(r *gin.Engine) {
 			v1.POST("/drinks", func(c *gin.Context) {
 				s.handleCreateDrink(c)
 			})
+			v1.POST("/generateDrinks", func(c *gin.Context) {
+				s.handleGenerateDrinks(c)
+			})
+			v1.GET("/ingredients", func(c *gin.Context) {
+				s.handleGetIngredients(c)
+			})
 		}
 	}
 }

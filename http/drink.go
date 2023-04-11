@@ -7,6 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type IngredientListRequest struct {
+	Ingredients []drinkee.Ingredient `json:"ingredients"`
+}
+
 func (s *Server) handleGetDrinks(c *gin.Context) {
 	drinks, err := s.DrinkService.FindDrinks(c)
 	if err != nil {
@@ -32,4 +36,38 @@ func (s *Server) handleCreateDrink(c *gin.Context) {
 	}
 
 	c.String(http.StatusAccepted, "added new drink! \n")
+}
+
+func (s *Server) handleGenerateDrinks(c *gin.Context) {
+	var ingredientList IngredientListRequest
+	err := c.ShouldBindJSON(&ingredientList)
+	if err != nil {
+		c.String(http.StatusBadRequest, "couldn't bind to list of ingredients", err)
+		return
+	}
+
+	ingredients := ingredientList.Ingredients
+
+	strict := c.Query("strict")
+	if strict == "true" {
+		drinks, err := s.DrinkService.GenerateDrinks(c, ingredients)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "error generating drinks: %s", err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusAccepted, drinks)
+		return
+	}
+	c.String(http.StatusAccepted, "non strict generate cocktails")
+}
+
+func (s *Server) handleGetIngredients(c *gin.Context) {
+	ingredients, err := s.DrinkService.FindIngredients(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error getting ingredients: %s", err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, ingredients)
 }
