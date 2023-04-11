@@ -6,8 +6,15 @@ import (
 
 	"github.com/dylanconnolly/drinkee/postgres"
 	"github.com/dylanconnolly/drinkee/router"
+	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 )
+
+type Main struct {
+	DB     *sqlx.DB
+	Router *gin.Engine
+}
 
 func main() {
 	err := godotenv.Load()

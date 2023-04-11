@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/dylanconnolly/drinkee/postgres"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -64,7 +65,8 @@ func (dis *DrinkIngredientSlice) Scan(src interface{}) error {
 // }
 
 type BaseRouter struct {
-	db *sqlx.DB
+	db           *sqlx.DB
+	DrinkService *postgres.DrinkService
 }
 
 type IngredientsListRequest struct {
@@ -80,24 +82,35 @@ type CreateIngredientsListRequest struct {
 	Ingredients []CreateIngredientRequest `json:"ingredients" binding:"required"`
 }
 
+// func (br *BaseRouter) getDrinks(c *gin.Context) {
+// 	var drinks []DrinkResponse
+
+// 	queryStr := `
+// 	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients
+// 	FROM drinks d
+// 	JOIN drink_ingredients di ON di.drink_id=d.id
+// 	JOIN ingredients i ON di.ingredient_id=i.id
+// 	GROUP BY d.id, d.name ORDER BY d.name;
+// 	`
+
+// 	err := br.db.Select(&drinks, queryStr)
+
+// 	if err != nil {
+// 		c.String(http.StatusInternalServerError, "err= %s", err)
+// 	}
+
+// 	c.IndentedJSON(http.StatusOK, drinks)
+// }
+
 func (br *BaseRouter) getDrinks(c *gin.Context) {
-	var drinks []DrinkResponse
-
-	queryStr := `
-	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
-	FROM drinks d 
-	JOIN drink_ingredients di ON di.drink_id=d.id
-	JOIN ingredients i ON di.ingredient_id=i.id 
-	GROUP BY d.id, d.name ORDER BY d.name;
-	`
-
-	err := br.db.Select(&drinks, queryStr)
-
+	drinks, err := br.DrinkService.FindDrinks(c)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "err= %s", err)
+		c.String(http.StatusInternalServerError, "error getting drinks: %s", err)
+		return
 	}
 
 	c.IndentedJSON(http.StatusOK, drinks)
+	fmt.Println("youre in new func")
 }
 
 func (br *BaseRouter) getDrinkByID(c *gin.Context) {
@@ -303,7 +316,8 @@ func (br *BaseRouter) createIngredientsList(c *gin.Context) {
 
 func CreateNewRouter(db *sqlx.DB) *gin.Engine {
 	br := &BaseRouter{
-		db: db,
+		db:           db,
+		DrinkService: postgres.NewDrinkService(db),
 	}
 
 	router := gin.Default()
