@@ -26,3 +26,8 @@ Test a single file
 ```
 go test -race /path/to/file
 ```
+
+for verbose output on tests:
+```
+go test /path/to/file -v
+```

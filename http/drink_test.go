@@ -10,6 +10,7 @@ import (
 
 	drinkeehttp "github.com/dylanconnolly/drinkee/http"
 	drinkeepg "github.com/dylanconnolly/drinkee/postgres"
+	test_utils "github.com/dylanconnolly/drinkee/test"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -92,6 +93,9 @@ func startDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 	log.Println("db migrations complete!")
 
 	// seeding
+	log.Println("starting seeding db...")
+	test_utils.SeedDb(db)
+	log.Println("done seeding")
 
 	return db, pool, resource
 }
@@ -119,7 +123,8 @@ func startDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 // }
 
 func cleanupDatabase(p *dockertest.Pool, r *dockertest.Resource) {
-	p.Purge(r)
+	fmt.Print(p, r)
+	// p.Purge(r)
 }
 
 var s = drinkeehttp.NewServer()
@@ -127,6 +132,7 @@ var s = drinkeehttp.NewServer()
 func TestGetDrinks(t *testing.T) {
 	t.Parallel()
 	db, p, resource := startDatabase(t)
+	defer cleanupDatabase(p, resource)
 	// s := drinkeehttp.NewServer()
 	s.DrinkService = drinkeepg.NewDrinkService(db)
 
@@ -137,12 +143,13 @@ func TestGetDrinks(t *testing.T) {
 
 	log.Println("body response: ", w.Body)
 	assert.Equal(t, http.StatusOK, w.Code)
-	cleanupDatabase(p, resource)
+	// cleanupDatabase(p, resource)
 }
 
 func TestGetIngredients(t *testing.T) {
 	t.Parallel()
 	db, p, resource := startDatabase(t)
+	defer cleanupDatabase(p, resource)
 	// s := drinkeehttp.NewServer()
 	s.DrinkService = drinkeepg.NewDrinkService(db)
 
@@ -153,7 +160,7 @@ func TestGetIngredients(t *testing.T) {
 
 	log.Printf("body response: %+v", w)
 	assert.Equal(t, http.StatusOK, w.Code)
-	cleanupDatabase(p, resource)
+	// cleanupDatabase(p, resource)
 }
 
 func TestThing(t *testing.T) {
