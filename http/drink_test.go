@@ -9,7 +9,11 @@ import (
 	"time"
 
 	drinkeehttp "github.com/dylanconnolly/drinkee/http"
-	"github.com/dylanconnolly/drinkee/postgres"
+	drinkeepg "github.com/dylanconnolly/drinkee/postgres"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest"
@@ -58,7 +62,7 @@ func startDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 	resource.Expire(120) // Tell docker to hard kill the container in 120 seconds
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	pool.MaxWait = 120 * time.Second
+	pool.MaxWait = 300 * time.Second
 	if err = pool.Retry(func() error {
 		db, err = sqlx.Open("postgres", databaseUrl)
 		if err != nil {
@@ -69,28 +73,95 @@ func startDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
 
+	// run migrations
+	log.Println("running db migrations...")
+	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance("file:///Users/dconnolly/repos/drinkee/db/migrations", "postgres", driver)
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+	err = m.Up()
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+
+	log.Println("db migrations complete!")
+
+	// seeding
+
 	return db, pool, resource
 }
 
+// func runMigrations(migrationsPath string, db *sqlx.DB) error {
+// 	if migrationsPath == "" {
+// 		return errors.New("missing migrations path")
+// 	}
+
+// 	fmt.Println("im in the migrate thing")
+
+// 	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	m, err := migrate.NewWithDatabaseInstance("file://"+migrationsPath, "postgres", driver)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = m.Up()
+// 	if err != nil && err != migrate.ErrNoChange {
+// 		return err
+// 	}
+// 	return nil
+// }
+
 func cleanupDatabase(p *dockertest.Pool, r *dockertest.Resource) {
-	fmt.Print(p, r)
-	// p.Purge(r)
+	p.Purge(r)
 }
+
+var s = drinkeehttp.NewServer()
 
 func TestGetDrinks(t *testing.T) {
 	t.Parallel()
 	db, p, resource := startDatabase(t)
-	s := drinkeehttp.NewServer()
-	s.DrinkService = postgres.NewDrinkService(db)
+	// s := drinkeehttp.NewServer()
+	s.DrinkService = drinkeepg.NewDrinkService(db)
 
-	s.DrinkService.SimpleFind()
+	// s.DrinkService.SimpleFind()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/drinks", nil)
 	s.Router.ServeHTTP(w, req)
 
-	fmt.Print(w.Body)
+	log.Println("body response: ", w.Body)
 	assert.Equal(t, http.StatusOK, w.Code)
 	cleanupDatabase(p, resource)
+}
+
+func TestGetIngredients(t *testing.T) {
+	t.Parallel()
+	db, p, resource := startDatabase(t)
+	// s := drinkeehttp.NewServer()
+	s.DrinkService = drinkeepg.NewDrinkService(db)
+
+	// s.DrinkService.SimpleFind()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/ingredients", nil)
+	s.Router.ServeHTTP(w, req)
+
+	log.Printf("body response: %+v", w)
+	assert.Equal(t, http.StatusOK, w.Code)
+	cleanupDatabase(p, resource)
+}
+
+func TestThing(t *testing.T) {
+	t.Parallel()
+
+	a := "a"
+	b := "b"
+	assert.NotEqual(t, a, b)
 }
 
 // func TestCreateDrink(t *testing.T) {

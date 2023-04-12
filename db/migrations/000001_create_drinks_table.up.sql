@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS drinks(
     id serial PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    display_name VARCHAR(255),
+    display_name VARCHAR(255) NOT NULL,
     description text,
     instructions text NOT NULL,
     created_at timestamp NOT NULL DEFAULT current_timestamp,
