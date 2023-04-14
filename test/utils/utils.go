@@ -7,25 +7,19 @@ import (
 	"time"
 
 	"github.com/dylanconnolly/drinkee/drinkee"
-	"github.com/jmoiron/sqlx"
-	"github.com/mattes/migrate"
-	"github.com/mattes/migrate/database/postgres"
-
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 )
 
-type DrinkIngredientRow struct {
-	DrinkID      int `db:"drink_id"`
-	IngredientID int `db:"ingredient_id"`
-	Measurement  string
-}
-
 func SetupIntegrationTest(t *testing.T, mockDataCount int) (*sqlx.DB, *dockertest.Pool, *dockertest.Resource) {
 	db, pool, resource := setupDatabase(t)
+
 	if err := seedDatabase(db, mockDataCount); err != nil {
 		log.Fatalf("Could not seed database: %s", err)
 	}
@@ -125,6 +119,12 @@ func seedDatabase(db *sqlx.DB, n int) error {
 		INSERT INTO drink_ingredients (drink_id, ingredient_id, measurement) VALUES (:drink_id, :ingredient_id, :measurement)
 	`, drinkIngredientRows)
 	return tx.Commit()
+}
+
+type DrinkIngredientRow struct {
+	DrinkID      int `db:"drink_id"`
+	IngredientID int `db:"ingredient_id"`
+	Measurement  string
 }
 
 func generateMockDrinks(n int) []drinkee.Drink {
