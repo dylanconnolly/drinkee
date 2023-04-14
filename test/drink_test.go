@@ -9,10 +9,8 @@ import (
 
 	"github.com/dylanconnolly/drinkee/drinkee"
 	drinkeehttp "github.com/dylanconnolly/drinkee/http"
-	drinkeepg "github.com/dylanconnolly/drinkee/postgres"
+	"github.com/dylanconnolly/drinkee/postgres"
 	test_utils "github.com/dylanconnolly/drinkee/test/utils"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +22,7 @@ func TestGetDrinks(t *testing.T) {
 	db, p, resource := test_utils.SetupIntegrationTest(t, 5)
 	defer test_utils.TeardownIntegrationTest(p, resource)
 
-	s.DrinkService = drinkeepg.NewDrinkService(db)
+	s.DrinkService = postgres.NewDrinkService(db)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/drinks", nil)
@@ -52,7 +50,7 @@ func TestGetIngredients(t *testing.T) {
 	db, p, resource := test_utils.SetupIntegrationTest(t, 5)
 	defer test_utils.TeardownIntegrationTest(p, resource)
 
-	s.DrinkService = drinkeepg.NewDrinkService(db)
+	s.DrinkService = postgres.NewDrinkService(db)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/ingredients", nil)

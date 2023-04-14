@@ -84,19 +84,18 @@ func setupDatabase(t *testing.T) (*sqlx.DB, *dockertest.Pool, *dockertest.Resour
 	}
 
 	// run migrations
-	log.Println("running db migrations...")
 	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
 	if err != nil {
-		fmt.Println("error: ", err)
+		log.Fatalf("error: %s", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file:///Users/dconnolly/repos/drinkee/db/migrations", "postgres", driver)
 	if err != nil {
-		fmt.Println("error: ", err)
+		log.Fatalf("error: %s", err)
 	}
 	err = m.Up()
 	if err != nil {
-		fmt.Println("error: ", err)
+		log.Fatalf("error: %s", err)
 	}
 
 	return db, pool, resource
