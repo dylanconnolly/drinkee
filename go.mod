@@ -9,6 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
+	github.com/mattes/migrate v3.0.1+incompatible
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/stretchr/testify v1.8.2
 )

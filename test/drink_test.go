@@ -1,13 +1,16 @@
-package http_test
+package integration_tests
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/dylanconnolly/drinkee/drinkee"
 	drinkeehttp "github.com/dylanconnolly/drinkee/http"
 	drinkeepg "github.com/dylanconnolly/drinkee/postgres"
 	"github.com/golang-migrate/migrate/v4"
@@ -135,13 +138,24 @@ func TestGetDrinks(t *testing.T) {
 	// s := drinkeehttp.NewServer()
 	s.DrinkService = drinkeepg.NewDrinkService(db)
 
-	// s.DrinkService.SimpleFind()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/drinks", nil)
 	s.Router.ServeHTTP(w, req)
 
-	log.Println("body response: ", w.Body)
+	var drinks []drinkee.DrinkResponse
+	// read, _ := resp.Body.ReadBytes(0)
+	// json.Unmarshal(read, &drinks)
+	b, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Errorf("Error reading drink response body: %s", err)
+	}
+	err = json.Unmarshal(b, &drinks)
+	if err != nil {
+		t.Errorf("Error unmarshalling drink response into drinks: %s", err)
+	}
+
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotEmpty(t, drinks)
 }
 
 func TestGetIngredients(t *testing.T) {
@@ -151,21 +165,12 @@ func TestGetIngredients(t *testing.T) {
 	// s := drinkeehttp.NewServer()
 	s.DrinkService = drinkeepg.NewDrinkService(db)
 
-	// s.DrinkService.SimpleFind()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/ingredients", nil)
 	s.Router.ServeHTTP(w, req)
 
-	log.Printf("body response: %+v", w.Body)
+	// log.Printf("body response: %+v", w.Body)
 	assert.Equal(t, http.StatusOK, w.Code)
-}
-
-func TestThing(t *testing.T) {
-	t.Parallel()
-
-	a := "a"
-	b := "b"
-	assert.NotEqual(t, a, b)
 }
 
 // func TestCreateDrink(t *testing.T) {
