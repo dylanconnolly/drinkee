@@ -52,7 +52,6 @@ type DrinkService interface {
 	// FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
 	FindDrinks(ctx *gin.Context) ([]*DrinkResponse, error)
 	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
-	SimpleFind()
 	GenerateDrinks(c *gin.Context, i []Ingredient) ([]DrinkResponse, error)
 	FindIngredients(c *gin.Context) ([]*Ingredient, error)
 }

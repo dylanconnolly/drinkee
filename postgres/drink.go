@@ -67,11 +67,6 @@ func (s *DrinkService) GenerateDrinks(c *gin.Context, i []drinkee.Ingredient) ([
 	return drinks, nil
 }
 
-func (s *DrinkService) SimpleFind() {
-	s.db.Queryx("SELECT * FROM drinks")
-	s.db.Queryx(`\dt`)
-}
-
 func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
 	var ingredientNames []string
 	for _, di := range cd.DrinkIngredients {
