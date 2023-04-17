@@ -118,15 +118,20 @@ func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
 
 func findDrinks(ctx *gin.Context, tx *sqlx.Tx, f drinkee.DrinkFilter) ([]*drinkee.Drink, error) {
 	var drinks []*drinkee.Drink
+	var filters []interface{}
 	where := []string{"1 = 1"}
-	filters := []interface{}{}
 
 	if id := f.ID; id != nil {
 		where, filters = append(where, "d.id = ?"), append(filters, *id)
 	}
 
 	if name := f.Name; name != nil {
-		where, filters = append(where, "d.name = ?"), append(filters, *name)
+		names := strings.Split(*name, ",")
+		if len(names) == 1 {
+			where, filters = append(where, "d.name = ?"), append(filters, *name)
+		} else {
+			where, filters = append(where, "d.name = ANY(?)"), append(filters, pq.Array(names))
+		}
 	}
 
 	queryStr := `
@@ -144,7 +149,9 @@ func findDrinks(ctx *gin.Context, tx *sqlx.Tx, f drinkee.DrinkFilter) ([]*drinke
 	GROUP BY d.id, d.name
 	ORDER BY d.name ` + SetLimitOffset(f.Limit, f.Skip)
 
-	err := tx.Select(&drinks, queryStr, filters...)
+	// Rebind query to assign postgres bindvars to generic ? used in filters above
+	q := tx.Rebind(queryStr)
+	err := tx.Select(&drinks, q, filters...)
 
 	if err != nil {
 		return nil, err

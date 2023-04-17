@@ -89,6 +89,19 @@ func TestDrinkFilter(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NotEmpty(t, drinks)
 	assert.Equal(t, 5, len(drinks))
+
+	name := "test drink 1,test drink 2,test drink 3,test drink 4,test drink 5,test drink 6"
+	filter := drinkee.DrinkFilter{
+		Name: &name,
+	}
+
+	var buffer bytes.Buffer
+	json.NewEncoder(&buffer).Encode(filter)
+
+	req, _ = http.NewRequest("GET", "/api/v1/drinks", &buffer)
+	s.Router.ServeHTTP(w, req)
+
+	fmt.Printf("body response: %+v", w.Body)
 }
 
 func TestGetDrinkByID(t *testing.T) {
@@ -126,6 +139,7 @@ func TestGetDrinkByID(t *testing.T) {
 }
 
 func TestGenerateDrinks(t *testing.T) {
+	t.Parallel()
 	db, p, resource := test_utils.SetupIntegrationTest(t, 5)
 	defer test_utils.TeardownIntegrationTest(p, resource)
 
