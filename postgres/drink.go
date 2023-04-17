@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/dylanconnolly/drinkee/drinkee"
 	"github.com/gin-gonic/gin"
@@ -32,14 +33,14 @@ func (s *DrinkService) FindDrinkByID(c *gin.Context, id int) (*drinkee.Drink, er
 	return drink, nil
 }
 
-func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.Drink, error) {
+func (s *DrinkService) FindDrinks(ctx *gin.Context, f drinkee.DrinkFilter) ([]*drinkee.Drink, error) {
 	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 
-	drinks, err := findDrinks(ctx, tx)
+	drinks, err := findDrinks(ctx, tx, f)
 	if err != nil {
 		return nil, err
 	}
@@ -115,18 +116,35 @@ func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
 	return nil
 }
 
-func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.Drink, error) {
+func findDrinks(ctx *gin.Context, tx *sqlx.Tx, f drinkee.DrinkFilter) ([]*drinkee.Drink, error) {
 	var drinks []*drinkee.Drink
+	where := []string{"1 = 1"}
+	filters := []interface{}{}
+
+	if id := f.ID; id != nil {
+		where, filters = append(where, "d.id = ?"), append(filters, *id)
+	}
+
+	if name := f.Name; name != nil {
+		where, filters = append(where, "d.name = ?"), append(filters, *name)
+	}
 
 	queryStr := `
-	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+	SELECT 
+		d.id, 
+		d.name,
+		d.display_name,
+		d.description,
+		d.instructions,
+		json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
 	FROM drinks d 
 	JOIN drink_ingredients di ON di.drink_id=d.id
-	JOIN ingredients i ON di.ingredient_id=i.id 
-	GROUP BY d.id, d.name ORDER BY d.name;
-	`
+	JOIN ingredients i ON di.ingredient_id=i.id
+	WHERE ` + strings.Join(where, " AND ") + `
+	GROUP BY d.id, d.name
+	ORDER BY d.name ` + SetLimitOffset(f.Limit, f.Skip)
 
-	err := tx.Select(&drinks, queryStr)
+	err := tx.Select(&drinks, queryStr, filters...)
 
 	if err != nil {
 		return nil, err

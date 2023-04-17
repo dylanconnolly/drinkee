@@ -58,6 +58,39 @@ func TestGetDrinks(t *testing.T) {
 	assert.NotEmpty(t, drinks[0].DrinkIngredients)
 }
 
+func TestDrinkFilter(t *testing.T) {
+	t.Parallel()
+	db, p, resource := test_utils.SetupIntegrationTest(t, 10)
+	defer test_utils.TeardownIntegrationTest(p, resource)
+
+	s.DrinkService = postgres.NewDrinkService(db)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/drinks?limit=5", nil)
+	s.Router.ServeHTTP(w, req)
+
+	var drinks []drinkee.Drink
+
+	if w.Code != 200 {
+		t.Errorf("Error with drink request: %s", w.Body)
+		t.FailNow()
+	}
+	b, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Errorf("Error reading drink response body: %s", err)
+		t.FailNow()
+	}
+	err = json.Unmarshal(b, &drinks)
+	if err != nil {
+		t.Errorf("Error unmarshalling drink response into drinks: %s", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotEmpty(t, drinks)
+	assert.Equal(t, 5, len(drinks))
+}
+
 func TestGetDrinkByID(t *testing.T) {
 	t.Parallel()
 	db, p, resource := test_utils.SetupIntegrationTest(t, 2)

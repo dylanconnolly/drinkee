@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/dylanconnolly/drinkee/drinkee"
 	"github.com/dylanconnolly/drinkee/postgres"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -103,7 +104,8 @@ type CreateIngredientsListRequest struct {
 // }
 
 func (br *BaseRouter) getDrinks(c *gin.Context) {
-	drinks, err := br.DrinkService.FindDrinks(c)
+	f := drinkee.DrinkFilter{}
+	drinks, err := br.DrinkService.FindDrinks(c, f)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "error getting drinks: %s", err)
 		return

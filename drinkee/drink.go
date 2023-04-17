@@ -8,7 +8,7 @@ import (
 
 type DrinkService interface {
 	FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
-	FindDrinks(ctx *gin.Context) ([]*Drink, error)
+	FindDrinks(ctx *gin.Context, f DrinkFilter) ([]*Drink, error)
 	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
 	GenerateDrinks(c *gin.Context, i []Ingredient) ([]*Drink, error)
 	FindIngredients(c *gin.Context) ([]*Ingredient, error)
@@ -55,4 +55,11 @@ type DrinkIngredient struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName" db:"display_name"`
 	Measurement string `json:"measurement"`
+}
+
+type DrinkFilter struct {
+	Limit int
+	Skip  int
+	Name  *string `json:"name,omitempty"`
+	ID    *int    `json:"id,omitempty"`
 }

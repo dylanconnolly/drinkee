@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -13,7 +14,11 @@ type IngredientListRequest struct {
 }
 
 func (s *Server) handleGetDrinks(c *gin.Context) {
-	drinks, err := s.DrinkService.FindDrinks(c)
+	f := buildFilter(c)
+
+	fmt.Printf("filter binding: %+v", f)
+
+	drinks, err := s.DrinkService.FindDrinks(c, f)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "error getting drinks: %s", err)
 		return
@@ -87,4 +92,31 @@ func (s *Server) handleGetIngredients(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, ingredients)
+}
+
+func buildFilter(c *gin.Context) drinkee.DrinkFilter {
+	var f drinkee.DrinkFilter
+
+	c.ShouldBindJSON(&f)
+	// if err := c.ShouldBindJSON(&f); err != nil {
+	// 	fmt.Printf("error decoding filter in request body: %s", err)
+	// }
+
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		limit = 100
+	}
+	skip, err := strconv.Atoi(c.Query("skip"))
+	if err != nil {
+		skip = 0
+	}
+
+	filter := drinkee.DrinkFilter{
+		Limit: limit,
+		Skip:  skip,
+		Name:  f.Name,
+		ID:    f.ID,
+	}
+
+	return filter
 }
