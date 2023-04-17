@@ -28,21 +28,32 @@ func TestGetDrinks(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/drinks", nil)
 	s.Router.ServeHTTP(w, req)
 
-	var drinks []drinkee.DrinkResponse
-	// read, _ := resp.Body.ReadBytes(0)
-	// json.Unmarshal(read, &drinks)
+	var drinks []drinkee.Drink
+
+	if w.Code != 200 {
+		t.Errorf("Error with drink request: %s", w.Body)
+		t.FailNow()
+	}
 	b, err := ioutil.ReadAll(w.Body)
 	if err != nil {
 		t.Errorf("Error reading drink response body: %s", err)
+		t.FailNow()
 	}
 	err = json.Unmarshal(b, &drinks)
 	if err != nil {
 		t.Errorf("Error unmarshalling drink response into drinks: %s", err)
+		t.FailNow()
 	}
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NotEmpty(t, drinks)
 	assert.Equal(t, 5, len(drinks))
+	assert.NotEmpty(t, drinks[0].ID)
+	assert.NotEmpty(t, drinks[0].Name)
+	assert.NotEmpty(t, drinks[0].DisplayName)
+	assert.NotEmpty(t, drinks[0].Description)
+	assert.NotEmpty(t, drinks[0].Instructions)
+	assert.NotEmpty(t, drinks[0].DrinkIngredients)
 }
 
 func TestGetDrinkByID(t *testing.T) {
@@ -57,15 +68,21 @@ func TestGetDrinkByID(t *testing.T) {
 	s.Router.ServeHTTP(w, req)
 
 	var drink drinkee.DrinkResponse
-	// read, _ := resp.Body.ReadBytes(0)
-	// json.Unmarshal(read, &drinks)
+
+	if w.Code != 200 {
+		t.Errorf("Error with drink request: %s", w.Body)
+		t.FailNow()
+	}
+
 	b, err := ioutil.ReadAll(w.Body)
 	if err != nil {
 		t.Errorf("Error reading drink response body: %s", err)
+		t.FailNow()
 	}
 	err = json.Unmarshal(b, &drink)
 	if err != nil {
 		t.Errorf("Error unmarshalling drink response into drinks: %s", err)
+		t.FailNow()
 	}
 
 	assert.Equal(t, http.StatusOK, w.Code)

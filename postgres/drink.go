@@ -32,7 +32,7 @@ func (s *DrinkService) FindDrinkByID(c *gin.Context, id int) (*drinkee.DrinkResp
 	return drinks, nil
 }
 
-func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.DrinkResponse, error) {
+func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.Drink, error) {
 	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -115,8 +115,8 @@ func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
 	return nil
 }
 
-func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.DrinkResponse, error) {
-	var drinks []*drinkee.DrinkResponse
+func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.Drink, error) {
+	var drinks []*drinkee.Drink
 
 	queryStr := `
 	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
