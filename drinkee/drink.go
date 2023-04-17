@@ -7,10 +7,10 @@ import (
 )
 
 type DrinkService interface {
-	FindDrinkByID(ctx *gin.Context, id int) (*DrinkResponse, error)
+	FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
 	FindDrinks(ctx *gin.Context) ([]*Drink, error)
 	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
-	GenerateDrinks(c *gin.Context, i []Ingredient) ([]DrinkResponse, error)
+	GenerateDrinks(c *gin.Context, i []Ingredient) ([]*Drink, error)
 	FindIngredients(c *gin.Context) ([]*Ingredient, error)
 }
 

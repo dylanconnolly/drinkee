@@ -1,7 +1,9 @@
 package integration_tests
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -67,7 +69,7 @@ func TestGetDrinkByID(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/drinks/1", nil)
 	s.Router.ServeHTTP(w, req)
 
-	var drink drinkee.DrinkResponse
+	var drink drinkee.Drink
 
 	if w.Code != 200 {
 		t.Errorf("Error with drink request: %s", w.Body)
@@ -87,6 +89,44 @@ func TestGetDrinkByID(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "Test Drink 1", drink.DisplayName)
+	assert.NotEmpty(t, drink.DrinkIngredients)
+}
+
+func TestGenerateDrinks(t *testing.T) {
+	db, p, resource := test_utils.SetupIntegrationTest(t, 5)
+	defer test_utils.TeardownIntegrationTest(p, resource)
+
+	s.DrinkService = postgres.NewDrinkService(db)
+
+	ingredients := drinkeehttp.IngredientListRequest{
+		Ingredients: []drinkee.Ingredient{
+			{
+				ID:          1,
+				Name:        "test ingredient 1",
+				DisplayName: "Test Ingredient 1",
+			},
+			{
+				ID:          3,
+				Name:        "test ingredient 3",
+				DisplayName: "Test Ingredient 3",
+			},
+		},
+	}
+
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(ingredients)
+	if err != nil {
+		t.Errorf("Error encoding request body: %s", err)
+		t.FailNow()
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/generateDrinks?strict=true", &buffer)
+
+	s.Router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusAccepted, w.Code)
+	fmt.Printf("response: %+v", w.Body)
 }
 
 func TestGetIngredients(t *testing.T) {

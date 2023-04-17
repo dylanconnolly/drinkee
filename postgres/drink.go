@@ -17,19 +17,19 @@ func NewDrinkService(db *sqlx.DB) *DrinkService {
 	return &DrinkService{db: db}
 }
 
-func (s *DrinkService) FindDrinkByID(c *gin.Context, id int) (*drinkee.DrinkResponse, error) {
+func (s *DrinkService) FindDrinkByID(c *gin.Context, id int) (*drinkee.Drink, error) {
 	tx, err := s.db.BeginTxx(c, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 
-	drinks, err := findDrinkByID(c, tx, id)
+	drink, err := findDrinkByID(c, tx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return drinks, nil
+	return drink, nil
 }
 
 func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.Drink, error) {
@@ -61,7 +61,7 @@ func (s *DrinkService) CreateDrink(c *gin.Context, cd *drinkee.CreateDrink) erro
 	return tx.Commit()
 }
 
-func (s *DrinkService) GenerateDrinks(c *gin.Context, i []drinkee.Ingredient) ([]drinkee.DrinkResponse, error) {
+func (s *DrinkService) GenerateDrinks(c *gin.Context, i []drinkee.Ingredient) ([]*drinkee.Drink, error) {
 	var ingredientIDs []int
 
 	tx, err := s.db.BeginTxx(c, nil)
@@ -135,8 +135,8 @@ func findDrinks(ctx *gin.Context, tx *sqlx.Tx) ([]*drinkee.Drink, error) {
 	return drinks, nil
 }
 
-func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]drinkee.DrinkResponse, error) {
-	var drinks []drinkee.DrinkResponse
+func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]*drinkee.Drink, error) {
+	var drinks []*drinkee.Drink
 
 	queryStr := `SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients
 		FROM 
@@ -159,8 +159,8 @@ func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]drink
 	return drinks, nil
 }
 
-func findDrinkByID(c *gin.Context, tx *sqlx.Tx, id int) (*drinkee.DrinkResponse, error) {
-	var drink drinkee.DrinkResponse
+func findDrinkByID(c *gin.Context, tx *sqlx.Tx, id int) (*drinkee.Drink, error) {
+	var drink drinkee.Drink
 
 	err := tx.Get(&drink, `
 	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
