@@ -10,6 +10,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const DefaultConfigPath = "~/.env"
+
 type Main struct {
 	DB         *sqlx.DB
 	HTTPServer *http.Server
@@ -24,6 +26,7 @@ func CreateMain() *Main {
 }
 
 func main() {
+	// fmt.Println("db username env: ", os.Getenv("POSTGRES_USERNAME"))
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println(err)

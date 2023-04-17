@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/dylanconnolly/drinkee/drinkee"
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,22 @@ func (s *Server) handleGetDrinks(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, drinks)
+}
+
+func (s *Server) handleGetDrinkByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid ID format")
+		return
+	}
+
+	drink, err := s.DrinkService.FindDrinkByID(c, id)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error fetching drink: %s", err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, drink)
 }
 
 func (s *Server) handleCreateDrink(c *gin.Context) {

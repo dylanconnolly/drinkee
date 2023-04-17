@@ -17,6 +17,21 @@ func NewDrinkService(db *sqlx.DB) *DrinkService {
 	return &DrinkService{db: db}
 }
 
+func (s *DrinkService) FindDrinkByID(c *gin.Context, id int) (*drinkee.DrinkResponse, error) {
+	tx, err := s.db.BeginTxx(c, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	drinks, err := findDrinkByID(c, tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return drinks, nil
+}
+
 func (s *DrinkService) FindDrinks(ctx *gin.Context) ([]*drinkee.DrinkResponse, error) {
 	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -142,6 +157,25 @@ func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]drink
 	}
 
 	return drinks, nil
+}
+
+func findDrinkByID(c *gin.Context, tx *sqlx.Tx, id int) (*drinkee.DrinkResponse, error) {
+	var drink drinkee.DrinkResponse
+
+	err := tx.Get(&drink, `
+	SELECT d.id, d.name, d.display_name, d.description, d.instructions, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+	FROM drinks d 
+	JOIN drink_ingredients di ON di.drink_id=d.id
+	JOIN ingredients i ON di.ingredient_id=i.id 
+	WHERE d.id = $1
+	GROUP BY d.id, d.name ORDER BY d.name
+	`, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &drink, nil
 }
 
 func (s *DrinkService) FindIngredients(c *gin.Context) ([]*drinkee.Ingredient, error) {

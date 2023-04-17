@@ -45,6 +45,33 @@ func TestGetDrinks(t *testing.T) {
 	assert.Equal(t, 5, len(drinks))
 }
 
+func TestGetDrinkByID(t *testing.T) {
+	t.Parallel()
+	db, p, resource := test_utils.SetupIntegrationTest(t, 2)
+	defer test_utils.TeardownIntegrationTest(p, resource)
+
+	s.DrinkService = postgres.NewDrinkService(db)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/drinks/1", nil)
+	s.Router.ServeHTTP(w, req)
+
+	var drink drinkee.DrinkResponse
+	// read, _ := resp.Body.ReadBytes(0)
+	// json.Unmarshal(read, &drinks)
+	b, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Errorf("Error reading drink response body: %s", err)
+	}
+	err = json.Unmarshal(b, &drink)
+	if err != nil {
+		t.Errorf("Error unmarshalling drink response into drinks: %s", err)
+	}
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Test Drink 1", drink.DisplayName)
+}
+
 func TestGetIngredients(t *testing.T) {
 	t.Parallel()
 	db, p, resource := test_utils.SetupIntegrationTest(t, 5)

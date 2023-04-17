@@ -7,6 +7,9 @@ func (s *Server) GenerateRoutes(r *gin.Engine) {
 	{
 		v1 := api.Group("/v1")
 		{
+			v1.GET("/drinks/:id", func(c *gin.Context) {
+				s.handleGetDrinkByID(c)
+			})
 			v1.GET("/drinks", func(c *gin.Context) {
 				s.handleGetDrinks(c)
 			})

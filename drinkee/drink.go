@@ -6,6 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type DrinkService interface {
+	FindDrinkByID(ctx *gin.Context, id int) (*DrinkResponse, error)
+	FindDrinks(ctx *gin.Context) ([]*DrinkResponse, error)
+	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
+	GenerateDrinks(c *gin.Context, i []Ingredient) ([]DrinkResponse, error)
+	FindIngredients(c *gin.Context) ([]*Ingredient, error)
+}
+
 type Drink struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
@@ -46,12 +54,4 @@ type DrinkIngredient struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName" db:"display_name"`
 	Measurement string `json:"measurement"`
-}
-
-type DrinkService interface {
-	// FindDrinkByID(ctx *gin.Context, id int) (*Drink, error)
-	FindDrinks(ctx *gin.Context) ([]*DrinkResponse, error)
-	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
-	GenerateDrinks(c *gin.Context, i []Ingredient) ([]DrinkResponse, error)
-	FindIngredients(c *gin.Context) ([]*Ingredient, error)
 }
