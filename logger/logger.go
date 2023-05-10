@@ -16,10 +16,7 @@ type Logger interface {
 }
 
 func New() *log.Logger {
-	err := os.Mkdir(LogsDirectoryPath, 0777)
-	if err != nil && err != os.ErrExist {
-		fmt.Printf("error creating logger: %+v", err)
-	}
+	os.Mkdir(LogsDirectoryPath, 0777)
 
 	year, month, day := time.Now().Date()
 	fileName := fmt.Sprintf("%v-%v-%v.log", year, month, day)

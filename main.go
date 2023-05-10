@@ -40,6 +40,6 @@ func main() {
 	m := CreateMain()
 	drinkService := postgres.NewDrinkService(m.DB)
 	m.HTTPServer.DrinkService = drinkService
-	m.Logger.Println("logging output")
+	m.Logger.Println("attached logger to main")
 	m.HTTPServer.Serve()
 }
