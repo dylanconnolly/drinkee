@@ -16,7 +16,7 @@ const DefaultConfigPath = "~/.env"
 type Main struct {
 	DB         *sqlx.DB
 	HTTPServer *http.Server
-	Logger     *log.Logger
+	Logger     *logger.LogWrapper
 }
 
 func CreateMain() *Main {
@@ -40,6 +40,6 @@ func main() {
 	m := CreateMain()
 	drinkService := postgres.NewDrinkService(m.DB)
 	m.HTTPServer.DrinkService = drinkService
-	m.Logger.Println("attached logger to main")
+	m.Logger.Info("info log on main")
 	m.HTTPServer.Serve()
 }
