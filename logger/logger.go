@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"time"
 )
@@ -12,13 +13,26 @@ const (
 )
 
 type Logger interface {
-	Debug(msg string)
+	// Debug(msg string, fields ...interface{})
+	Debug(lf *LogFields)
 	Info(msg string)
 	Warn(msg string)
+	Error(msg string)
 }
 
 type LogWrapper struct {
 	logger *log.Logger
+}
+
+type LogFields struct {
+	Message string
+	Fields  interface{}
+}
+
+type HttpFields struct {
+	Route  string
+	Method string
+	URL    *url.URL
 }
 
 func New() *LogWrapper {
@@ -38,7 +52,7 @@ func New() *LogWrapper {
 		return nil
 	}
 
-	logger := log.New(filePath, "", log.LstdFlags|log.Lshortfile)
+	logger := log.New(filePath, "", log.LstdFlags)
 
 	newLogger := &LogWrapper{
 		logger: logger,
@@ -47,18 +61,27 @@ func New() *LogWrapper {
 	return newLogger
 }
 
-func (lw *LogWrapper) Debug(msg string) {
-	lw.logger.Printf("level=DEBUG, message=%s", msg)
+//	func (lw *LogWrapper) Debug(msg string, fields ...interface{}) {
+//		fmt.Println("fields passed: ", fields)
+//		lw.logger.Printf("level=DEBUG, message=%s, fields=%s", msg, fields)
+//	}
+func (lw *LogWrapper) Debug(lf *LogFields) {
+	lw.logger.SetFlags(log.LstdFlags | log.Lshortfile)
+	fmt.Println("fields passed: ", lf)
+	lw.logger.Printf("level=DEBUG, message=%s, fields=%+v", lf.Message, lf.Fields)
 }
 
 func (lw *LogWrapper) Info(msg string) {
+	lw.logger.SetFlags(log.LstdFlags)
 	lw.logger.Printf("level=INFO, message=%s", msg)
 }
 
 func (lw *LogWrapper) Warn(msg string) {
+	lw.logger.SetFlags(log.LstdFlags)
 	lw.logger.Printf("level=WARN, message=%s", msg)
 }
 
 func (lw *LogWrapper) Error(msg string) {
+	lw.logger.SetFlags(log.LstdFlags)
 	lw.logger.Printf("level=ERROR, message=%s", msg)
 }
