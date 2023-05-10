@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/dylanconnolly/drinkee/http"
+	"github.com/dylanconnolly/drinkee/logger"
 	"github.com/dylanconnolly/drinkee/postgres"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -15,6 +16,7 @@ const DefaultConfigPath = "~/.env"
 type Main struct {
 	DB         *sqlx.DB
 	HTTPServer *http.Server
+	Logger     *log.Logger
 }
 
 func CreateMain() *Main {
@@ -22,6 +24,7 @@ func CreateMain() *Main {
 	return &Main{
 		DB:         db,
 		HTTPServer: http.NewServer(),
+		Logger:     logger.New(),
 	}
 }
 
@@ -37,5 +40,6 @@ func main() {
 	m := CreateMain()
 	drinkService := postgres.NewDrinkService(m.DB)
 	m.HTTPServer.DrinkService = drinkService
+	m.Logger.Println("logging output")
 	m.HTTPServer.Serve()
 }
