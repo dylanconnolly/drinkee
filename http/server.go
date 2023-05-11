@@ -1,7 +1,9 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/dylanconnolly/drinkee/drinkee"
 	"github.com/dylanconnolly/drinkee/logger"
@@ -20,10 +22,21 @@ func NewServer() *Server {
 	s := &Server{
 		server: &http.Server{},
 		Router: gin.New(),
-		logger: logger.New(),
 	}
 
 	s.Router.Use(cors.Default())
+	s.Router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s \"%s %s %s %d %s\" \"%s\" \"%s\"\n",
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
 
 	s.GenerateRoutes(s.Router)
 
