@@ -2,11 +2,12 @@ package http
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dylanconnolly/drinkee/drinkee"
-	"github.com/dylanconnolly/drinkee/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +16,6 @@ type Server struct {
 	server       *http.Server
 	Router       *gin.Engine
 	DrinkService drinkee.DrinkService
-	logger       logger.Logger
 }
 
 func NewServer() *Server {
@@ -25,6 +25,25 @@ func NewServer() *Server {
 	}
 
 	s.Router.Use(cors.Default())
+	s.Router.Use(gin.Recovery())
+	s.SetLogOutputDest()
+	s.ApplyLogFormat()
+
+	s.GenerateRoutes(s.Router)
+
+	return s
+}
+
+func (s *Server) Serve() {
+	s.Router.Run()
+}
+
+func (s *Server) SetLogOutputDest() {
+	file, _ := os.Create("router.log")
+	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
+}
+
+func (s *Server) ApplyLogFormat() {
 	s.Router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s \"%s %s %s %d %s\" \"%s\" \"%s\"\n",
 			param.TimeStamp.Format(time.RFC1123),
@@ -37,12 +56,4 @@ func NewServer() *Server {
 			param.ErrorMessage,
 		)
 	}))
-
-	s.GenerateRoutes(s.Router)
-
-	return s
-}
-
-func (s *Server) Serve() {
-	s.Router.Run()
 }
