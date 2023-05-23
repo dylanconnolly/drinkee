@@ -78,3 +78,17 @@ SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_in
             JOIN ingredients i ON di.ingredient_id=i.id 
             GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
 		WHERE ingredients_present=total_ingredients;
+
+
+
+SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients, ingredients_present, total_ingredients - ingredients_present AS missing_ingredients
+		FROM 
+			(SELECT d.*, COUNT(*) AS ingredients_present,
+			(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients 
+			FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id IN (15,24) GROUP BY d.id) AS md 
+      JOIN (SELECT d.id, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+            FROM drinks d 
+            JOIN drink_ingredients di ON di.drink_id=d.id
+            JOIN ingredients i ON di.ingredient_id=i.id 
+            GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
+		WHERE ingredients_present>=1;

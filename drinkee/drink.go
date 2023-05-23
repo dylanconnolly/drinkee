@@ -11,6 +11,7 @@ type DrinkService interface {
 	FindDrinks(ctx *gin.Context, f DrinkFilter) ([]*Drink, error)
 	CreateDrink(ctx *gin.Context, cr *CreateDrink) error
 	GenerateDrinks(c *gin.Context, i []Ingredient) ([]*Drink, error)
+	GenerateNonStrictDrinks(c *gin.Context, i []Ingredient) ([]*NonStrictDrink, error)
 	FindIngredients(c *gin.Context) ([]*Ingredient, error)
 }
 
@@ -21,6 +22,17 @@ type Drink struct {
 	Description      string               `json:"description,omitempty"`
 	Instructions     string               `json:"instructions"`
 	DrinkIngredients DrinkIngredientSlice `json:"drinkIngredients" db:"drink_ingredients"`
+}
+
+type NonStrictDrink struct {
+	ID                     int                  `json:"id"`
+	Name                   string               `json:"name"`
+	DisplayName            string               `json:"displayName" db:"display_name"`
+	Description            string               `json:"description,omitempty"`
+	Instructions           string               `json:"instructions"`
+	MissingIngredientCount int                  `json:"missingIngredientCount" db:"missing_ingredients"`
+	HaveIngredientCount    int                  `json:"haveIngredientCount" db:"ingredients_present"`
+	DrinkIngredients       DrinkIngredientSlice `json:"drinkIngredients" db:"drink_ingredients"`
 }
 
 type DrinkResponse struct {

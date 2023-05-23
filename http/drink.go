@@ -81,7 +81,11 @@ func (s *Server) handleGenerateDrinks(c *gin.Context) {
 		c.IndentedJSON(http.StatusAccepted, drinks)
 		return
 	}
-	c.String(http.StatusAccepted, "non strict generate cocktails")
+	drinks, err := s.DrinkService.GenerateNonStrictDrinks(c, ingredients)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error generating non strict drinks: %s", err)
+	}
+	c.IndentedJSON(http.StatusAccepted, drinks)
 }
 
 func (s *Server) handleGetIngredients(c *gin.Context) {

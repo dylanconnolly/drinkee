@@ -83,6 +83,27 @@ func (s *DrinkService) GenerateDrinks(c *gin.Context, i []drinkee.Ingredient) ([
 	return drinks, nil
 }
 
+func (s *DrinkService) GenerateNonStrictDrinks(c *gin.Context, i []drinkee.Ingredient) ([]*drinkee.NonStrictDrink, error) {
+	var ingredientIDs []int
+
+	tx, err := s.db.BeginTxx(c, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	for _, ingredient := range i {
+		ingredientIDs = append(ingredientIDs, ingredient.ID)
+	}
+
+	drinks, err := generateNonStrictDrinks(c, tx, ingredientIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return drinks, nil
+}
+
 func createDrink(c *gin.Context, tx *sqlx.Tx, cd *drinkee.CreateDrink) error {
 	var ingredientNames []string
 	for _, di := range cd.DrinkIngredients {
@@ -175,6 +196,30 @@ func generateDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]*drin
             GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
 		WHERE ingredients_present=total_ingredients
 		ORDER BY md.name;`
+
+	err := tx.Select(&drinks, queryStr, pq.Array(ingredientIDs))
+	if err != nil {
+		return nil, err
+	}
+
+	return drinks, nil
+}
+
+func generateNonStrictDrinks(ctx *gin.Context, tx *sqlx.Tx, ingredientIDs []int) ([]*drinkee.NonStrictDrink, error) {
+	var drinks []*drinkee.NonStrictDrink
+
+	queryStr := `SELECT md.id,md.name,md.display_name,md.description,md.instructions, ij.drink_ingredients, ingredients_present, total_ingredients - ingredients_present AS missing_ingredients
+		FROM 
+			(SELECT d.*, COUNT(*) AS ingredients_present,
+			(SELECT COUNT(*) FROM drink_ingredients WHERE drink_ingredients.drink_id=d.id) AS total_ingredients 
+			FROM drinks d JOIN drink_ingredients di ON di.drink_id=d.id WHERE di.ingredient_id = ANY($1) GROUP BY d.id) AS md 
+      JOIN (SELECT d.id, json_agg(json_build_object('name', i.name, 'displayName', i.display_name, 'measurement', di.measurement)) as drink_ingredients 
+            FROM drinks d 
+            JOIN drink_ingredients di ON di.drink_id=d.id
+            JOIN ingredients i ON di.ingredient_id=i.id 
+            GROUP BY d.id, d.name ) AS ij ON ij.id=md.id
+		WHERE ingredients_present>=1
+		ORDER BY missing_ingredients, md.name;`
 
 	err := tx.Select(&drinks, queryStr, pq.Array(ingredientIDs))
 	if err != nil {
